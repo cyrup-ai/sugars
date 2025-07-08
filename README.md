@@ -1,4 +1,4 @@
-# [Cyrup Sugars](https://github.com/cyrup-ai/sugars)
+# [suga*rs*](https://github.com/cyrup-ai/sugars)
 
 [![Crates.io](https://img.shields.io/crates/v/cyrup_sugars.svg)](https://crates.io/crates/cyrup_sugars)
 [![Documentation](https://docs.rs/cyrup_sugars/badge.svg)](https://docs.rs/cyrup_sugars)
