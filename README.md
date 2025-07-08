@@ -4,6 +4,8 @@
 [![Documentation](https://docs.rs/cyrup_sugars/badge.svg)](https://docs.rs/cyrup_sugars)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
 
+![Cyrup Sugars](./assets/suargs.jpg)
+
 Syntactic sugar utilities for Rust - collections, async patterns, and macros.
 
 ## Features
