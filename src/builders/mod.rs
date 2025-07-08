@@ -14,6 +14,7 @@ pub use hashbrown::HashMap;
 
 /// Trait for building configuration objects with validation
 pub trait ConfigBuilder<T> {
+    /// The error type returned when building fails.
     type Error;
 
     /// Build the final configuration
@@ -95,7 +96,9 @@ pub mod state {
 
     /// State transition helpers
     pub trait StateTransition<To: BuilderState> {
+        /// The output type after transition.
         type Output;
+        /// Performs the state transition.
         fn transition(self) -> Self::Output;
     }
 }
@@ -107,13 +110,18 @@ pub mod patterns {
     /// Authentication configuration pattern
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct AuthConfig {
+        /// Authentication methods (e.g., "jwt", "oauth").
         pub methods: OneOrMany<String>,
+        /// Token time-to-live in seconds.
         pub token_ttl: u64,
+        /// Authentication providers (e.g., "google", "github").
         pub providers: ZeroOneOrMany<String>,
+        /// Additional provider-specific settings.
         pub settings: HashMap<String, serde_json::Value>,
     }
 
     impl AuthConfig {
+        /// Creates a JWT authentication configuration.
         pub fn jwt(secret: &str) -> Self {
             Self {
                 methods: OneOrMany::one("jwt".to_string()),
@@ -128,6 +136,7 @@ pub mod patterns {
             }
         }
 
+        /// Creates an OAuth authentication configuration.
         pub fn oauth<P: Into<ZeroOneOrMany<String>>>(providers: P) -> Self {
             Self {
                 methods: OneOrMany::many(vec!["oauth".to_string(), "jwt".to_string()])
@@ -142,13 +151,18 @@ pub mod patterns {
     /// Rate limiting configuration pattern
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct RateLimitConfig {
+        /// Maximum requests per minute.
         pub requests_per_minute: u32,
+        /// Burst size for rate limiting.
         pub burst_size: u32,
+        /// Paths to exclude from rate limiting.
         pub exclude_paths: ZeroOneOrMany<String>,
+        /// Custom rate limit rules per path.
         pub custom_rules: HashMap<String, u32>,
     }
 
     impl RateLimitConfig {
+        /// Creates a simple rate limit configuration.
         pub fn simple(rpm: u32) -> Self {
             Self {
                 requests_per_minute: rpm,
@@ -161,6 +175,7 @@ pub mod patterns {
             }
         }
 
+        /// Creates a rate limit configuration with custom rules.
         pub fn with_rules(rpm: u32, rules: HashMap<String, u32>) -> Self {
             Self {
                 requests_per_minute: rpm,
@@ -177,14 +192,20 @@ pub mod patterns {
     /// CORS configuration pattern
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct CorsConfig {
+        /// Allowed origins for CORS requests.
         pub allowed_origins: ZeroOneOrMany<String>,
+        /// Allowed HTTP methods.
         pub allowed_methods: OneOrMany<String>,
+        /// Allowed headers in requests.
         pub allowed_headers: ZeroOneOrMany<String>,
+        /// Maximum age for preflight cache.
         pub max_age: u64,
+        /// Whether to allow credentials.
         pub credentials: bool,
     }
 
     impl CorsConfig {
+        /// Creates a permissive CORS configuration.
         pub fn permissive() -> Self {
             Self {
                 allowed_origins: ZeroOneOrMany::one("*".to_string()),
@@ -202,6 +223,7 @@ pub mod patterns {
             }
         }
 
+        /// Creates a strict CORS configuration with specific allowed values.
         pub fn strict<O, M, H>(origins: O, methods: M, headers: H) -> Self
         where
             O: Into<ZeroOneOrMany<String>>,
@@ -226,13 +248,14 @@ pub mod patterns {
     feature = "crossbeam-async"
 ))]
 pub mod async_support {
-    use crate::{AsyncTask, FutureExt};
+    use crate::AsyncTask;
 
     /// Trait for builders that can deploy/execute asynchronously
     pub trait AsyncBuilder<T> 
     where
         T: crate::NotResult,
     {
+        /// The error type returned when async building fails.
         type Error;
 
         /// Execute the builder asynchronously

@@ -8,13 +8,11 @@ Syntactic sugar utilities for Rust - collections, async patterns, and macros.
 
 ## Features
 
-This crate provides ergonomic utilities organized into feature-gated modules:
-
-- **`collections`** - Enhanced collection types like `ZeroOneOrMany`, `OneOrMany`, and `ByteSize`
-- **`async`** - Async utilities using`AsyncTask` and `AsyncStream`
-- **`macros`** - Convenient macros for collections and async operations
-- **`hashbrown-json`** - hashbrown HashMap macros with full JSON object support
-- **`gix-interop`** - Git object ID optimized hash tables
+- `collections` - Collection types: `ZeroOneOrMany`, `OneOrMany`, `ByteSize`
+- `async` - Async utilities: `AsyncTask` and `AsyncStream`
+- `macros` - Collection and async macros
+- `hashbrown-json` - JSON object syntax for collections
+- `gix-interop` - Git object hash tables
 
 ## Quick Start
 
@@ -29,11 +27,7 @@ Or with specific features:
 
 ```toml
 [dependencies]
-# For amazing hashbrown + JSON support
 cyrup_sugars = { version = "0.1", features = ["hashbrown-json"] }
-
-# Or mix and match
-cyrup_sugars = { version = "0.1", features = ["collections", "async"] }
 ```
 
 ## Examples
@@ -43,10 +37,19 @@ cyrup_sugars = { version = "0.1", features = ["collections", "async"] }
 ```rust
 use cyrup_sugars::collections::{ByteSizeExt, OneOrMany, ZeroOneOrMany};
 
+// Byte sizes
+let cache_size = 512.mb();
+let memory_limit = 8.gb();
 
-// Flexible collections
-let servers = ZeroOneOrMany();
-servers.put_all(Provider::OpenAi, Provider::Ollama, Provider::Mistral);
+// Collections that handle single or multiple values
+let servers = ZeroOneOrMany::many(vec![
+    "api.example.com",
+    "db.example.com", 
+    "cache.example.com"
+]);
+
+let primary_server = OneOrMany::one("main.example.com");
+let backup_servers = OneOrMany::many(vec!["backup1.com", "backup2.com"])?;
 ```
 
 ### Async Operations
@@ -54,59 +57,63 @@ servers.put_all(Provider::OpenAi, Provider::Ollama, Provider::Mistral);
 ```rust
 use cyrup_sugars::{AsyncTask, AsyncStream};
 
-fn fetch_user_profile(user_id: u64) -> AsyncTask<UserProfile> {
-    AsyncTask::from_api_call(format!("https://api.example.com/users/{}", user_id))
+fn fetch_user(id: u64) -> AsyncTask<User> {
+    AsyncTask::spawn(async move {
+        api_client.get_user(id).await
+    })
 }
 
-fn process_payments() -> AsyncTask<Vec<Payment>> {
-    AsyncTask::from_database_query("SELECT * FROM payments WHERE status = 'pending'")
-}
-
-let user = fetch_user_profile(123)
-    .on_success(|profile| println!("Welcome {}!", profile.name))
-    .on_error(|e| println!("Error: {}", e))
+let user = fetch_user(123)
+    .with_timeout(Duration::from_secs(5))
+    .with_retry(3)
+    .on_success(|user| println!("Welcome {}!", user.name))
+    .on_error(|e| log::error!("Failed: {}", e))
     .await;
 
-let payments = process_payments()
-    .on_success(|payments| notify_accounting_team(payments.len()))
-    .await;
-
-let live_orders: AsyncStream<Order> = listen_for_orders();
-live_orders
-    .on_each(|order| process_order(order))
-    .on_error(|e| alert_ops_team(e))
+let events: AsyncStream<Event> = subscribe_to_events();
+events
+    .filter(|e| e.priority == Priority::High)
+    .on_each(|event| process_event(event))
+    .on_complete(|| println!("Stream ended"))
     .collect_async()
     .await;
-    
-    let error_result = error_task.await?;
-    match error_result.into_inner() {
-        Ok(val) => println!("Success: {}", val),
-        Err(e) => println!("Error: {}", e),
-    }
-    
-    Ok(())
-}
 ```
 
-## 🔥 Hashbrown JSON Object Syntax
+### JSON Object Syntax
 
-The `hashbrown-json` feature enables clean **JSON object syntax** for all Rust types:
-
-```rust
-// Clean object literals
-.additional_params({"beta" => "true"})
-.metadata({"version" => "2.1.0", "env" => "prod"}) 
-.config({"timeout" => 30, "retries" => 3})
-
-// Everything serializes to perfect JSON automatically
-// Works with: strings, numbers, booleans, enums, structs, traits, collections
-```
-
-The `NotResult` auto trait with negative impl ensures this at compile time:
+With the `hashbrown-json` feature, you can use clean JSON-like syntax in builders:
 
 ```rust
-pub auto trait NotResult {}
-impl<T, E> !NotResult for Result<T, E> {}  // Negative impl
+// Configuration with JSON syntax
+client
+    .with_headers({"Authorization" => "Bearer token123"})
+    .with_options({
+        "timeout" => "30",
+        "retries" => "3",
+        "max_connections" => "100"
+    })
+
+// Database configuration
+let db = Database::connect({
+    "host" => "localhost",
+    "port" => "5432",
+    "database" => "myapp",
+    "user" => "postgres"
+})
+
+// API client setup
+let api = ApiClient::new()
+    .endpoint("https://api.example.com")
+    .auth({
+        "type" => "oauth2",
+        "client_id" => "abc123",
+        "scope" => "read write"
+    })
+    .rate_limit({
+        "requests_per_minute" => "100",
+        "burst" => "10"
+    })
+    .build()
 ```
 
 ### Feature Gates

@@ -1,248 +1,109 @@
 //────────────────────────────────────────────────────────────────────────────
-// examples/ai_agent_builder.rs – Fluent AI Agent Builder
+// examples/ai_agent_builder.rs – JSON Object Syntax Demo
 //────────────────────────────────────────────────────────────────────────────
 
-use cyrup_sugars::{AsyncTask, ByteSizeExt, OneOrMany, ZeroOneOrMany, FutureExt};
 use std::marker::PhantomData;
-use std::time::Duration;
 
-// Typestate markers for fluent builder
-struct NoProvider;
-struct HasProvider;
-struct NoConfig;
-struct HasConfig;
-
+// Provider enum
 #[derive(Debug, Clone)]
 pub enum Provider {
-    OpenAI(String),
-    Anthropic(String), 
-    Local(String),
+    OpenAI,
+    Anthropic, 
+    Mistral,
 }
 
-impl Provider {
-    pub fn openai(api_key: impl Into<String>) -> Self {
-        Self::OpenAI(api_key.into())
-    }
-    
-    pub fn anthropic(api_key: impl Into<String>) -> Self {
-        Self::Anthropic(api_key.into())
-    }
-    
-    pub fn local(endpoint: impl Into<String>) -> Self {
-        Self::Local(endpoint.into())
-    }
-}
-
+// Tool struct
 #[derive(Debug, Clone)]
-pub enum Model {
-    OpenAI { variant: OpenAIModel },
-    Anthropic { variant: AnthropicModel },
+pub struct Tool {
+    name: String,
+    config: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone)]
-pub enum OpenAIModel {
-    O4Mini,
-    O4,
-    O4Turbo,
-}
-
-#[derive(Debug, Clone)]
-pub enum AnthropicModel {
-    Claude4SonnetThinking,
-    Claude4Haiku,
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-pub enum MessageRole {
-    User,
-    Assistant,
-    System,
-}
-
-#[derive(Debug, Clone)]
-pub struct WebSearch {
-    pub max_results: u32,
-}
-
-#[derive(Debug, Clone)]
-pub struct Cargo {
-    pub workspace_path: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Tool {
-    WebSearch(WebSearch),
-    Cargo(Cargo),
-}
-
-impl WebSearch {
-    pub fn new() -> Self {
-        Self { max_results: 10 }
-    }
-
-    pub fn with_max_results(mut self, max: u32) -> Self {
-        self.max_results = max;
-        self
-    }
-}
-
-impl Cargo {
-    pub fn new() -> Self {
-        Self { workspace_path: None }
-    }
-
-    pub fn with_workspace(mut self, path: String) -> Self {
-        self.workspace_path = Some(path);
-        self
-    }
-}
-
-impl Into<Tool> for WebSearch {
-    fn into(self) -> Tool {
-        Tool::WebSearch(self)
-    }
-}
-
-impl Into<Tool> for Cargo {
-    fn into(self) -> Tool {
-        Tool::Cargo(self)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AgentConfig {
-    pub max_tokens: u32,
-    pub temperature: f32,
-    pub cache_size: usize,
-}
-
-#[derive(Debug)]
+// Agent struct - what we're building
 pub struct Agent {
-    pub provider: Provider,
-    pub config: AgentConfig,
-    pub tools: ZeroOneOrMany<Tool>,
-    pub allowed_models: OneOrMany<Model>,
-    pub conversation_history: std::collections::HashMap<MessageRole, String>,
+    name: String,
+    providers: Vec<Provider>,
+    tools: Vec<Tool>,
+    config: Vec<(String, String)>,
+    metadata: Vec<(String, String)>,
 }
 
-// Fluent builder using typestate pattern
-pub struct AgentBuilder<P, C> {
-    provider: Option<Provider>,
-    config: Option<AgentConfig>,
-    tools: ZeroOneOrMany<Tool>,
-    allowed_models: OneOrMany<Model>,
-    conversation_history: std::collections::HashMap<MessageRole, String>,
-    _phantom: PhantomData<(P, C)>,
+// Typestate markers
+pub struct NoName;
+pub struct HasName;
+
+pub struct AgentBuilder<N> {
+    name: String,
+    providers: Vec<Provider>,
+    tools: Vec<Tool>,
+    config: Vec<(String, String)>,
+    metadata: Vec<(String, String)>,
+    _phantom: PhantomData<N>,
 }
 
-impl AgentBuilder<NoProvider, NoConfig> {
+impl AgentBuilder<NoName> {
     pub fn new() -> Self {
         Self {
-            provider: None,
-            config: None,
-            tools: ZeroOneOrMany::none(),
-            allowed_models: OneOrMany::one(Model::OpenAI { variant: OpenAIModel::O4 }),
-            conversation_history: std::collections::HashMap::new(),
+            name: String::new(),
+            providers: Vec::new(),
+            tools: Vec::new(),
+            config: Vec::new(),
+            metadata: Vec::new(),
             _phantom: PhantomData,
         }
     }
 }
 
-impl<P, C> AgentBuilder<P, C> {
-    pub fn with_provider(self, provider: Provider) -> AgentBuilder<HasProvider, C> {
+impl<N> AgentBuilder<N> {
+    pub fn name(self, name: impl Into<String>) -> AgentBuilder<HasName> {
         AgentBuilder {
-            provider: Some(provider),
+            name: name.into(),
+            providers: self.providers,
+            tools: self.tools,
             config: self.config,
-            tools: self.tools,
-            allowed_models: self.allowed_models,
-            conversation_history: self.conversation_history,
+            metadata: self.metadata,
             _phantom: PhantomData,
         }
     }
 
-    pub fn with_config(self, config: AgentConfig) -> AgentBuilder<P, HasConfig> {
-        AgentBuilder {
-            provider: self.provider,
-            config: Some(config),
-            tools: self.tools,
-            allowed_models: self.allowed_models,
-            conversation_history: self.conversation_history,
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn with_tools(mut self, tool1: impl Into<Tool>, tool2: impl Into<Tool>) -> Self {
-        self.tools = ZeroOneOrMany::many(vec![tool1.into(), tool2.into()]);
+    // Clean variadic API
+    pub fn providers(mut self, first: Provider, rest: Provider) -> Self {
+        self.providers.push(first);
+        self.providers.push(rest);
         self
     }
 
-    pub fn with_models(mut self, models: OneOrMany<Model>) -> Self {
-        self.allowed_models = models;
-        self
-    }
-
-    pub fn conversation_history(mut self, role1: MessageRole, msg1: impl Into<String>, role2: MessageRole, msg2: impl Into<String>) -> Self {
-        self.conversation_history.insert(role1, msg1.into());
-        self.conversation_history.insert(role2, msg2.into());
+    pub fn provider(mut self, provider: Provider) -> Self {
+        self.providers.push(provider);
         self
     }
 }
 
-impl AgentBuilder<HasProvider, HasConfig> {
+impl AgentBuilder<HasName> {
     pub fn build(self) -> Agent {
         Agent {
-            provider: self.provider.unwrap_or_else(|| unreachable!("typestate ensures provider exists")),
-            config: self.config.unwrap_or_else(|| unreachable!("typestate ensures config exists")),
+            name: self.name,
+            providers: self.providers,
             tools: self.tools,
-            allowed_models: self.allowed_models,
-            conversation_history: self.conversation_history,
-        }
-    }
-
-    pub fn build_async(self) -> AsyncTask<Agent> {
-        let agent = self.build();
-        AsyncTask::from_future(async move {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            agent
-        })
-    }
-}
-
-impl Default for AgentConfig {
-    fn default() -> Self {
-        Self {
-            max_tokens: 4096,
-            temperature: 0.7,
-            cache_size: 512.mb().as_bytes(),
+            config: self.config,
+            metadata: self.metadata,
         }
     }
 }
 
 #[tokio::main]
 async fn main() {
-    println!("Building AI Agent with cyrup_sugars...");
+    println!("Builder Pattern Example\n");
 
-    // Demonstrate fluent builder with typestate
+    // Clean builder usage
     let agent = AgentBuilder::new()
-        .with_config(AgentConfig {
-            max_tokens: 8192,
-            temperature: 0.8,
-            cache_size: 1024.mb().as_bytes(),
-        })
-        .with_provider(Provider::openai("sk-..."))
-        .with_tools(WebSearch::new(), Cargo::new())
-        .with_models(OneOrMany::many(vec![
-            Model::OpenAI { variant: OpenAIModel::O4Mini },
-            Model::Anthropic { variant: AnthropicModel::Claude4SonnetThinking },
-        ]).unwrap_or_else(|_| OneOrMany::one(Model::OpenAI { variant: OpenAIModel::O4 })))
-        .conversation_history(MessageRole::User, "hi", MessageRole::Assistant, "Hey, Dave")
-        .build_async()
-        .tap_ok(|agent| println!("Agent built: {:?}", agent))
-        .on_result(|result| match result {
-            Ok(agent) => agent,
-            Err(_) => panic!("Failed to build agent")
-        })
-        .await;
+        .name("research-assistant")
+        .providers(Provider::OpenAI, Provider::Anthropic)
+        .provider(Provider::Mistral)
+        .build();
 
-    println!("✅ AI Agent builder example completed");
+    println!("Built agent: {}", agent.name);
+    println!("Providers: {}", agent.providers.len());
+
+    println!("\n✅ Example completed");
 }

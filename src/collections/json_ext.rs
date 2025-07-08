@@ -224,6 +224,7 @@ impl<K1: NotString, V1: NotString> JsonObjectExtKV<K1, V1> for Option<Vec<(K1, V
 /// Extension methods for creating collections from JSON object syntax - String,String case.
 #[cfg(feature = "hashbrown-json")]
 pub trait CollectionJsonExtStringString {
+    /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -234,6 +235,7 @@ pub trait CollectionJsonExtStringString {
 /// Extension methods for creating collections from JSON object syntax - String,V case.
 #[cfg(feature = "hashbrown-json")]
 pub trait CollectionJsonExtStringV<V1: NotString> {
+    /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -244,6 +246,7 @@ pub trait CollectionJsonExtStringV<V1: NotString> {
 /// Extension methods for creating collections from JSON object syntax - K,String case.
 #[cfg(feature = "hashbrown-json")]
 pub trait CollectionJsonExtKString<K1: NotString> {
+    /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -254,6 +257,7 @@ pub trait CollectionJsonExtKString<K1: NotString> {
 /// Extension methods for creating collections from JSON object syntax - K,V case.
 #[cfg(feature = "hashbrown-json")]
 pub trait CollectionJsonExtKV<K1: NotString, V1: NotString> {
+    /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -267,6 +271,7 @@ pub trait TryCollectionJsonExtStringString {
     /// The error type returned when construction fails.
     type Error;
     
+    /// Tries to create a collection from a closure that returns a hashbrown HashMap.
     fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -281,6 +286,7 @@ pub trait TryCollectionJsonExtStringV<V1: NotString> {
     /// The error type returned when construction fails.
     type Error;
     
+    /// Tries to create a collection from a closure that returns a hashbrown HashMap.
     fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -295,6 +301,7 @@ pub trait TryCollectionJsonExtKString<K1: NotString> {
     /// The error type returned when construction fails.
     type Error;
     
+    /// Tries to create a collection from a closure that returns a hashbrown HashMap.
     fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -309,6 +316,7 @@ pub trait TryCollectionJsonExtKV<K1: NotString, V1: NotString> {
     /// The error type returned when construction fails.
     type Error;
     
+    /// Tries to create a collection from a closure that returns a hashbrown HashMap.
     fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
