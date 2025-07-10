@@ -32,121 +32,58 @@ Or with specific features:
 cyrup_sugars = { version = "0.1", features = ["hashbrown-json"] }
 ```
 
-## Examples
-
-### Collections
+## Example
 
 ```rust
-use cyrup_sugars::collections::{ByteSizeExt, OneOrMany, ZeroOneOrMany};
+let stream = FluentAi::agent_role("rusty-squire")
+    .completion_provider(Mistral::MagistralSmall)
+    .temperature(1.0)
+    .max_tokens(8000)
+    .system_prompt("Act as a Rust developers 'right hand man'.
+        You possess deep expertise in using tools to research rust, cargo doc and github libraries.
+        You are a patient and thoughtful software artisan; a master of sequential thinking and step-by-step reasoning.
+        You excel in compilation triage ...
 
-// Byte sizes
-let cache_size = 512.mb();
-let memory_limit = 8.gb();
+        ...
+        ...
 
-// Collections that handle single or multiple values
-let servers = ZeroOneOrMany::many(vec![
-    "api.example.com",
-    "db.example.com", 
-    "cache.example.com"
-]);
+        Today is {{ date }}
 
-let primary_server = OneOrMany::one("main.example.com");
-let backup_servers = OneOrMany::many(vec!["backup1.com", "backup2.com"])?;
-```
+        ~ Be Useful, Not Thorough")
+    .context( // trait Context
+        Context<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+        Context<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+        Context<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+        Context<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
+    )
+    .mcp_server<Stdio>::bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
+    .tools( // trait Tool
+        Tool<Perplexity>::new({
+            "citations" => "true"
+        }),
+        Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
+    ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
 
-### Async Operations
-
-```rust
-use cyrup_sugars::{AsyncTask, AsyncStream};
-
-fn fetch_user(id: u64) -> AsyncTask<User> {
-    AsyncTask::spawn(async move {
-        api_client.get_user(id).await
+    .additional_params({"beta" =>  "true"})
+    .memory(Library::named("obsidian_vault"))
+    .metadata({ "key" => "val", "foo" => "bar" })
+    .on_tool_result(|results| {
+        // do stuff
     })
-}
-
-let user = fetch_user(123)
-    .with_timeout(Duration::from_secs(5))
-    .with_retry(3)
-    .on_success(|user| println!("Welcome {}!", user.name))
-    .on_error(|e| log::error!("Failed: {}", e))
-    .await;
-
-let events: AsyncStream<Event> = subscribe_to_events();
-events
-    .filter(|e| e.priority == Priority::High)
-    .on_each(|event| process_event(event))
-    .on_complete(|| println!("Stream ended"))
-    .collect_async()
-    .await;
-```
-
-### JSON Object Syntax
-
-With the `hashbrown-json` feature, you can use clean JSON-like syntax in builders:
-
-```rust
-// Configuration with JSON syntax
-client
-    .with_headers({"Authorization" => "Bearer token123"})
-    .with_options({
-        "timeout" => "30",
-        "retries" => "3",
-        "max_connections" => "100"
+    .on_conversation_turn(|conversation, agent| {
+        log.info("Agent: " + conversation.last().message())
+        agent.chat(process_turn()) // your custom logic
     })
-
-// Database configuration
-let db = Database::connect({
-    "host" => "localhost",
-    "port" => "5432",
-    "database" => "myapp",
-    "user" => "postgres"
-})
-
-// API client setup
-let api = ApiClient::new()
-    .endpoint("https://api.example.com")
-    .auth({
-        "type" => "oauth2",
-        "client_id" => "abc123",
-        "scope" => "read write"
+    .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
+        Ok => chunk.into()       // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
+        println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
     })
-    .rate_limit({
-        "requests_per_minute" => "100",
-        "burst" => "10"
-    })
-    .build()
-```
-
-### Feature Gates
-
-All modules are feature-gated for minimal dependencies:
-
-```toml
-# Minimal - only collections
-cyrup_sugars = { version = "0.1", features = ["collections"] }
-
-# Async support - choose your runtime:
-cyrup_sugars = { version = "0.1", features = ["tokio-async"] }     # Tokio ecosystem
-cyrup_sugars = { version = "0.1", features = ["std-async"] }       # Runtime-agnostic
-cyrup_sugars = { version = "0.1", features = ["crossbeam-async"] } # Compute-heavy workloads
-
-# 🔥 Hashbrown with JSON magic
-cyrup_sugars = { version = "0.1", features = ["hashbrown-json"] }
-
-# Everything
-cyrup_sugars = { version = "0.1", features = ["full"] }
-```
-
-### Zero-Cost Abstractions
-
-Collections like `ZeroOneOrMany` optimize for common cases:
-
-- `None` variant uses zero heap allocations
-- `One` variant stores the element directly
-- `Many` variant pre-allocates capacity when transitioning from `One`
-
-## Examples
+    .into_agent() // Agent Now
+    .conversation_history(MessageRole::User => "What time is it in Paris, France",
+            MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
+            MessageRole::Assistant => "It’s 1:45 AM CEST on July 7, 2025, in Paris, France. That’s 9 hours ahead of your current time in Las Vegas.")
+    .chat("Hello")? // AsyncStream<MessageChunk
+    .collect();
 
 Run the examples to see the library in action:
 

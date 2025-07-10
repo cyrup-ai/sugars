@@ -2,12 +2,12 @@
 # Compiled Files
 # ==============================
 *.lock
-*.[oa]  
+*.[oa]
 *.d
-*.rlib  
-*.rmeta  
-**/*.rmeta  
-.history/  
+*.rlib
+*.rmeta
+**/*.rmeta
+.history/
 *.so
 *.dylib
 *.dll
@@ -290,3 +290,6 @@ Cache*/
 ./docs/async-graphql
 docs/pingora
 docs/async-graphql
+./history
+./CLAUDE.md
+./TODO.md

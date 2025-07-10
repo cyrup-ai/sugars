@@ -1,106 +1,104 @@
-# Production Quality Cyrup Sugars Completion Plan
+# TODO: LLM Library Package Implementation
 
-## VERIFICATION: Macro Privacy Status ✅
-- README.md: No macro exposure (mentions feature but no usage examples)
-- examples/: No macro usage in any example files  
-- lib.rs: Macros not re-exported at crate level
-- All macros remain private implementation details
+## Remove main.rs from LLM package (library not binary)
 
-## Critical Tasks for Production Readiness
+**Task**: Delete `/packages/llm/src/main.rs` since LLM package should be a library, not a binary. Update package structure to be library-only.
 
-### 1. Complete Test Coverage for All Modules
+**Files to modify**: 
+- Delete: `packages/llm/src/main.rs`
+- Verify: `packages/llm/Cargo.toml` has no `[[bin]]` section
 
-- [ ] Add comprehensive tests for ZeroOneOrMany module covering all variants (None, One, Many), all methods (len, is_empty, first, rest, with_pushed, with_inserted, map, try_map), iterator implementations, serde support, and conversion traits achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] Act as an Objective QA Rust developer - verify ZeroOneOrMany tests achieve 100% coverage, test all public APIs, handle edge cases properly, test state transitions, iterator behavior, and error handling in try_map.
+## QA: Verify LLM package is properly configured as library
 
-- [ ] Add comprehensive tests for OneOrMany module covering construction with error handling, EmptyListError cases, all methods inherited from ZeroOneOrMany wrapper, serde with empty array rejection, and conversion traits achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+Act as an Objective QA Rust developer and rate the work performed previously on removing main.rs and configuring LLM as library-only package. Verify that the package structure is correct for a library and no binary artifacts remain.
 
-- [ ] Act as an Objective QA Rust developer - verify OneOrMany tests achieve 100% coverage, properly test the non-empty guarantee, error cases, and wrapper functionality.
+## Create domain/mod.rs to expose domain modules
 
-- [ ] Add comprehensive tests for AsyncTask module covering all creation methods (new, from_future, from_value, spawn), Future implementation polling states, NotResult trait enforcement verification that Result<T,E> cannot be used, and error handling with oneshot::RecvError. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**Task**: Create `packages/llm/src/domain/mod.rs` to properly expose all domain modules (agent, tool, context, etc.) so they can be imported and used by the FluentAI builder.
 
-- [ ] Act as an Objective QA Rust developer - verify AsyncTask tests use tokio_test for async testing, achieve 100% coverage, properly test the negative impl restriction, and validate all creation patterns.
+**Files to modify**:
+- Create: `packages/llm/src/domain/mod.rs`
+- Update: `packages/llm/src/lib.rs` to include domain module
 
-- [ ] Add comprehensive tests for AsyncStream module covering creation and default, Stream trait implementation, collect and collect_async methods, from_stream conversion, and NotResult enforcement achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] Act as an Objective QA Rust developer - verify AsyncStream tests properly test streaming behavior, channel closure handling, and achieve full coverage of all methods.
+## QA: Verify domain modules are properly exposed
 
-- [ ] Add comprehensive tests for AsyncResult and AsyncResultChunk modules covering construction, all methods (ok, err, into_inner, as_ref, is_ok, is_err), conversion from Result, and NotResult trait implementation achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+Act as an Objective QA Rust developer and rate the work performed previously on creating domain/mod.rs and exposing domain modules. Verify that all domain objects can be properly imported and used.
 
-- [ ] Act as an Objective QA Rust developer - verify result type tests confirm these types can be used in AsyncTask/AsyncStream while raw Results cannot, and test all conversion patterns.
+## Implement real FluentAI builder with domain objects
 
-- [ ] Add comprehensive tests for FutureExt trait covering all methods (map, on_ok, on_err, map_ok, tap_ok, tap_err) with successful and error cases, channel closure scenarios, and chaining operations achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**Task**: Replace mock implementations in `packages/llm/src/llm_builder.rs` with real implementations that use the domain objects from `./domain/`. Integrate FluentAI builder with actual Tool, Agent, Context, and other domain objects.
 
-- [ ] Act as an Objective QA Rust developer - verify FutureExt tests cover all combinators, error propagation, chaining behavior, and achieve 100% coverage.
+**Files to modify**:
+- `packages/llm/src/llm_builder.rs` - Replace mocks with real domain object integration
+- Import domain objects and use them in builder methods
 
-- [ ] Add comprehensive tests for StreamExt trait covering all methods (on_result, on_chunk, on_error, tap_each, tee_each, map_stream, filter_stream, partition_chunks, collect, await_result, await_ok), channel closure handling, and error propagation achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] Act as an Objective QA Rust developer - verify StreamExt tests comprehensively test streaming operations, buffering, termination, and all transformation methods.
+## QA: Verify FluentAI builder uses real implementations
 
-- [ ] Add comprehensive tests for EmitterBuilder module covering creation and execution, emit method with ok and error handlers, and macro functionality achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+Act as an Objective QA Rust developer and rate the work performed previously on implementing real FluentAI builder with domain objects. Verify that no mock implementations remain and all builder methods work with actual domain objects.
 
-- [ ] Act as an Objective QA Rust developer - verify EmitterBuilder tests cover both success and error paths, macro expansion, and trait implementation.
+## Integrate JSON object syntax via hashbrown macro
 
-- [ ] Add comprehensive tests for gix_hashtable module covering ObjectIdMap insertion and thread safety, custom Hasher implementation, HashMap and HashSet type aliases achieving 100% code coverage. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**Task**: Implement JSON object syntax support in FluentAI builder methods using `sugars_macros::collections::hashbrown::hash_map_fn!` macro. Methods like `Tool<Perplexity>::new({"citations" => "true"})`, `.additional_params({"beta" => "true"})`, and `.metadata({"key" => "val"})` must work.
 
-- [ ] Act as an Objective QA Rust developer - verify gix_hashtable tests properly test the custom hasher, thread-safe operations, ObjectId key usage, and performance characteristics.
+**Files to modify**:
+- `packages/llm/src/llm_builder.rs` - Add hashbrown macro usage to builder methods
+- Implement FnOnce closures that accept JSON object syntax
+- Use `hash_map_fn!` internally to enable `{"key" => "value"}` syntax
 
-### 2. Complete Documentation Requirements
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] Add comprehensive documentation to all modules explaining purpose, design decisions, usage patterns, and examples eliminating all 46 missing documentation warnings. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+## QA: Verify JSON object syntax works via hashbrown macro
 
-- [ ] Act as an Objective QA Rust developer - verify all modules have comprehensive documentation, examples compile in doctests, documentation is clear, and all warnings are eliminated.
+Act as an Objective QA Rust developer and rate the work performed previously on integrating JSON object syntax via hashbrown macro. Verify that `{"key" => "value"}` syntax works correctly in all builder methods without mocking.
 
-- [ ] Add comprehensive doc comments to all public types, traits, and functions with examples, panics documentation, and safety notes where applicable. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+## Fix compilation errors in LLM package
 
-- [ ] Act as an Objective QA Rust developer - verify all public APIs are documented, examples in doc comments compile and run, and documentation follows Rust conventions.
+**Task**: Resolve all compilation errors in the LLM package. Run `cargo check --package sugars_llm` and fix any import errors, type mismatches, or other compilation issues.
 
-- [ ] Fix all lifetime parameter warnings in collections modules by adding explicit lifetime annotations to fmt::Formatter parameters. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**Files to modify**:
+- Fix any import/export issues in `packages/llm/src/lib.rs`
+- Resolve type errors in `packages/llm/src/llm_builder.rs`
+- Fix dependency issues in `packages/llm/Cargo.toml`
 
-- [ ] Act as an Objective QA Rust developer - verify all lifetime warnings are resolved and code compiles cleanly with no warnings.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-### 3. Integration Testing
+## QA: Verify LLM package compiles without errors
 
-- [ ] Create comprehensive integration tests in tests/ directory covering cross-module functionality, feature flag combinations, real-world usage patterns, and module interactions. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+Act as an Objective QA Rust developer and rate the work performed previously on fixing compilation errors. Verify that `cargo check --package sugars_llm` passes with zero errors and warnings.
 
-- [ ] Act as an Objective QA Rust developer - verify integration tests properly test module interactions, feature gate combinations, and realistic usage scenarios.
+## Update examples to import FluentAI from sugars_llm package
 
-### 4. Complete Example Suite
+**Task**: Update `packages/sugars-examples/src/main.rs` to import `FluentAI` from the `sugars_llm` package instead of defining it locally. Add `sugars_llm` dependency to examples package.
 
-- [ ] Create async_stream_processing.rs example demonstrating AsyncStream creation from channels, StreamExt transformations, partition_chunks for batching, and termination with collect/await_result without exposing any macros. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**Files to modify**:
+- `packages/sugars-examples/src/main.rs` - Replace local FluentAI with import from sugars_llm
+- `packages/sugars-examples/Cargo.toml` - Add dependency on sugars_llm package
+- Remove any mock implementations from examples
 
-- [ ] Act as an Objective QA Rust developer - verify stream processing example shows practical streaming patterns, performance considerations, and compiles/runs correctly.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] Create gix_integration.rs example demonstrating ObjectIdMap usage, thread-safe operations, and performance benefits without exposing any macros. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+## QA: Verify examples use real LLM package
 
-- [ ] Act as an Objective QA Rust developer - verify gix integration example properly demonstrates git-specific optimizations and thread safety.
+Act as an Objective QA Rust developer and rate the work performed previously on updating examples to use sugars_llm package. Verify that examples properly import and use the real FluentAI builder without any local mocks.
 
-- [ ] Create full_application.rs example demonstrating complete application using multiple modules together, feature gate usage, and production patterns without exposing any macros. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+## Test complete flow works end-to-end
 
-- [ ] Act as an Objective QA Rust developer - verify full application example integrates all modules realistically, demonstrates production patterns, and maintains macro privacy.
+**Task**: Verify that the complete flow works: examples import FluentAI from sugars_llm, JSON object syntax works in builder methods, and the example code from README compiles and runs correctly.
 
-### 5. CI/CD Pipeline
+**Files to verify**:
+- `cargo check --package sugars_llm` passes
+- `cargo check --package sugars-examples` passes
+- JSON object syntax works in examples
+- No mocking or simulation in any part of the flow
 
-- [ ] Create .github/workflows/ci.yml with jobs for testing all features, testing each feature individually, checking formatting and clippy, generating documentation, and measuring code coverage with tarpaulin achieving 100% coverage requirement. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] Act as an Objective QA Rust developer - verify CI configuration tests all feature combinations, enforces code quality, properly reports coverage, and validates build matrix.
+## QA: Verify complete flow works without mocking
 
-- [ ] Create tarpaulin.toml configuration file with settings for 100% coverage requirement, excluding examples and benchmarks, and HTML report generation. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] Act as an Objective QA Rust developer - verify tarpaulin configuration properly measures coverage, excludes appropriate files, and enforces 100% requirement.
-
-### 6. Final Quality Validation
-
-- [ ] Run comprehensive quality checks: cargo test --all-features ensuring all tests pass, cargo tarpaulin verifying 100% code coverage, cargo clippy --all-features -- -D warnings fixing all lints, cargo fmt checking formatting, and cargo doc --all-features validating documentation. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] Act as an Objective QA Rust developer - verify all quality checks pass, coverage is actually 100%, codebase is production ready, all examples work, and library provides genuine value to users.
-
-## Success Criteria
-- 100% test coverage across all modules
-- Zero clippy warnings with -D warnings flag
-- All examples compile and run successfully
-- Complete API documentation with zero warnings
-- CI/CD pipeline validates all quality metrics
-- Macros remain private throughout (verified ✅)
-- Ready for crates.io publication
+Act as an Objective QA Rust developer and rate the work performed previously on testing the complete flow. Verify that the entire system works end-to-end with real implementations, proper compilation, and functional JSON object syntax.
