@@ -5,9 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap as StdHashMap;
-
-// Import the hash_map_fn! macro for internal use
-use sugars_macros::hash_map_fn;
+use std::error::Error;
 
 /// Client builder that supports JSON object syntax
 #[derive(Debug, Clone, Serialize, Deserialize)]

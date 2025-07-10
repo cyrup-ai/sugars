@@ -5,7 +5,6 @@
 
 use sugars_llm::*;
 use sugars_macros::hash_map_fn;
-use tracing::info;
 
 // Helper trait for the example
 trait ExecToText {
@@ -31,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Demonstrating the exact JSON object syntax from README.md");
     println!();
 
-    let stream = FluentAi::agent_role("rusty-squire")
+    let _stream = FluentAi::agent_role("rusty-squire")
     .completion_provider(Mistral::MAGISTRAL_SMALL)
     .temperature(1.0)
     .max_tokens(8000)
@@ -61,11 +60,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .additional_params(hash_map_fn!("beta" => "true"))
     .memory(Library::named("obsidian_vault"))
     .metadata(hash_map_fn!("key" => "val", "foo" => "bar"))
-    .on_tool_result(|results| {
+    .on_tool_result(|_results| {
         // do stuff
     })
-    .on_conversation_turn(|conversation, agent| {
-        info!("Agent: Last conversation turn");
+    .on_conversation_turn(|_conversation, _agent| {
+        println!("[INFO] Agent: Last conversation turn");
         // your custom logic - return a processed message
         process_turn()
     })

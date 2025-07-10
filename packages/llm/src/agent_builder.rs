@@ -18,11 +18,11 @@ pub struct Directory;
 pub struct Github;
 
 impl<T> Context<T> {
-    pub fn of(path: &str) -> Context<T> {
+    pub fn of(_path: &str) -> Context<T> {
         Context(std::marker::PhantomData)
     }
 
-    pub fn glob(pattern: &str) -> Context<T> {
+    pub fn glob(_pattern: &str) -> Context<T> {
         Context(std::marker::PhantomData)
     }
 }
@@ -35,10 +35,7 @@ pub struct NamedTool {
 }
 
 impl<T> Tool<T> {
-    pub fn new<F>(params: F) -> Tool<T>
-    where
-        F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
-    {
+    pub fn new(_params: impl std::any::Any) -> Tool<T> {
         // Store params in a real implementation
         Tool(std::marker::PhantomData)
     }
@@ -205,8 +202,6 @@ impl AgentRoleBuilder {
     where
         F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
     {
-        // The hash_map_fn! macro is available in scope to enable {"key" => "value"} syntax
-        use sugars_macros::hash_map_fn;
         let hb_map = params();
         let mut map = HashMap::new();
         for (k, v) in hb_map {
