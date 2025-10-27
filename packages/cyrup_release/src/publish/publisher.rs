@@ -5,7 +5,7 @@
 
 use crate::error::{Result, PublishError};
 use crate::publish::{CargoPublisher, PublishConfig, PublishResult, YankResult};
-use crate::workspace::{WorkspaceInfo, DependencyGraph, PublishOrder, PublishTier};
+use crate::workspace::{WorkspaceInfo, DependencyGraph, PublishTier};
 use semver::Version;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -196,29 +196,6 @@ impl Publisher {
             tiers_processed: self.publish_state.current_tier + 1,
             all_successful,
         })
-    }
-
-    /// Validate all packages with dry run
-    async fn validate_all_packages(&self, publish_order: &PublishOrder) -> Result<()> {
-        let publish_config = self.create_publish_config();
-        
-        for package_name in publish_order.ordered_packages() {
-            let package_info = self.workspace.get_package(package_name)?;
-            
-            match self.cargo_publisher.validate_package_dry_run(package_info, &publish_config).await {
-                Ok(_) => {
-                    println!("✅ Dry run validation passed for {}", package_name);
-                }
-                Err(e) => {
-                    return Err(PublishError::DryRunFailed {
-                        package: package_name.clone(),
-                        reason: format!("Dry run validation failed: {}", e),
-                    }.into());
-                }
-            }
-        }
-
-        Ok(())
     }
 
     /// Publish a single tier of packages

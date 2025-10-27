@@ -159,7 +159,9 @@ pub enum GitError {
     /// Generic git operation failed
     #[error("Git operation '{operation}' failed: {reason}")]
     OperationFailed {
+        /// Name of the git operation that failed
         operation: String,
+        /// Detailed reason for the failure
         reason: String,
     },
 

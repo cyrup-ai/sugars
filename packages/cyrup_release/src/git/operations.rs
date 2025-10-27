@@ -8,72 +8,128 @@ use tokio::process::Command;
 /// Trait defining required Git operations for release management
 #[async_trait::async_trait]
 pub trait GitOperations {
+    /// Creates a release commit with all staged changes
     async fn create_release_commit(&self, version: &Version, message: Option<String>) -> Result<CommitInfo>;
+    
+    /// Creates an annotated git tag for the specified version
     async fn create_version_tag(&self, version: &Version, message: Option<String>) -> Result<TagInfo>;
+    
+    /// Pushes commits and optionally tags to a remote repository
     async fn push_to_remote(&self, remote_name: Option<&str>, push_tags: bool) -> Result<PushInfo>;
+    
+    /// Checks if the working directory has uncommitted changes
     async fn is_working_directory_clean(&self) -> Result<bool>;
+    
+    /// Gets information about the current branch
     async fn get_current_branch(&self) -> Result<BranchInfo>;
+    
+    /// Checks if a tag with the given name exists
     async fn tag_exists(&self, tag_name: &str) -> Result<bool>;
+    
+    /// Deletes a tag locally and optionally from the remote
     async fn delete_tag(&self, tag_name: &str, delete_remote: bool) -> Result<()>;
+    
+    /// Resets the repository to a specific commit
     async fn reset_to_commit(&self, commit_id: &str, reset_type: ResetType) -> Result<()>;
+    
+    /// Retrieves the N most recent commits
     async fn get_recent_commits(&self, count: usize) -> Result<Vec<CommitInfo>>;
+    
+    /// Gets all configured git remotes
     async fn get_remotes(&self) -> Result<Vec<RemoteInfo>>;
+    
+    /// Validates that the repository is ready for a release
     async fn validate_release_readiness(&self) -> Result<ValidationResult>;
 }
 
+/// Information about a git commit
 #[derive(Debug, Clone)]
 pub struct CommitInfo {
+    /// Full commit hash
     pub hash: String,
+    /// Abbreviated commit hash
     pub short_hash: String,
+    /// Commit message
     pub message: String,
+    /// Author name
     pub author_name: String,
+    /// Author email address
     pub author_email: String,
+    /// Commit timestamp in UTC
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// Parent commit hashes
     pub parents: Vec<String>,
 }
 
+/// Information about a git tag
 #[derive(Debug, Clone)]
 pub struct TagInfo {
+    /// Tag name
     pub name: String,
+    /// Optional tag message for annotated tags
     pub message: Option<String>,
+    /// Commit hash the tag points to
     pub target_commit: String,
+    /// Tag creation timestamp in UTC
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// Whether this is an annotated tag
     pub is_annotated: bool,
 }
 
+/// Information about a git push operation
 #[derive(Debug, Clone)]
 pub struct PushInfo {
+    /// Name of the remote that was pushed to
     pub remote_name: String,
+    /// Number of commits pushed
     pub commits_pushed: usize,
+    /// Number of tags pushed
     pub tags_pushed: usize,
+    /// Any warnings generated during the push
     pub warnings: Vec<String>,
 }
 
+/// Information about a git branch
 #[derive(Debug, Clone)]
 pub struct BranchInfo {
+    /// Branch name
     pub name: String,
+    /// Whether this is the current HEAD branch
     pub is_head: bool,
+    /// Upstream tracking branch if configured
     pub upstream: Option<String>,
+    /// Commit hash the branch points to
     pub commit_hash: String,
 }
 
+/// Information about a git remote
 #[derive(Debug, Clone)]
 pub struct RemoteInfo {
+    /// Remote name (e.g., "origin")
     pub name: String,
+    /// URL for fetching from the remote
     pub fetch_url: String,
+    /// URL for pushing to the remote
     pub push_url: String,
 }
 
+/// Git reset type specifying what to reset
 #[derive(Debug, Clone, Copy)]
 pub enum ResetType {
+    /// Keep staged changes and working directory changes
     Soft,
+    /// Keep working directory changes but reset the index
     Mixed,
+    /// Reset both index and working directory
     Hard,
 }
 
+/// Result of validating release readiness
 #[derive(Debug, Clone)]
 pub struct ValidationResult {
+    /// Whether the repository is ready for release
     pub is_valid: bool,
+    /// List of issues preventing release
     pub issues: Vec<String>,
 }
 
@@ -84,6 +140,7 @@ pub struct GitRepository {
 }
 
 impl GitRepository {
+    /// Discovers a git repository starting from the given path
     pub fn discover(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         Ok(Self {
@@ -91,10 +148,12 @@ impl GitRepository {
         })
     }
 
+    /// Opens a git repository at the given path
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         Self::discover(path)
     }
 
+    /// Returns the path to the repository root
     pub fn repo_path(&self) -> &Path {
         &self.repo_path
     }
@@ -336,6 +395,7 @@ impl GitOperations for GitRepository {
 }
 
 impl BranchInfo {
+    /// Returns the commit hash as a string slice
     pub fn commit_hash(&self) -> &str {
         &self.commit_hash
     }
