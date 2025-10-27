@@ -29,7 +29,6 @@ sugars_collections = { version = "0.5.2", path = "../collections" }
 sugars_async_task = { version = "0.5.2", path = "../async_task" }
 sugars_async_stream = { version = "0.5.2", path = "../async_stream" }
 sugars_macros = { version = "0.5.2", path = "../macros" }
-sugars_gix = { version = "0.5.2", path = "../gix" }
 sugars_builders = { version = "0.5.2", path = "../builders" }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
