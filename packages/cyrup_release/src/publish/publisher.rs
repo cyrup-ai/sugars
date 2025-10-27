@@ -154,10 +154,12 @@ impl Publisher {
         let publish_order = self.dependency_graph.publish_order()?;
         self.publish_state.total_tiers = publish_order.tier_count();
 
-        // Perform dry run validation if requested
-        if self.config.dry_run_first {
-            self.validate_all_packages(&publish_order).await?;
-        }
+        // NOTE: We DON'T validate all packages upfront because workspace packages
+        // depend on each other, and validation will fail for packages that depend
+        // on other workspace packages that haven't been published yet.
+        // Instead, we enable per-package validation (see create_publish_config)
+        // which validates each package RIGHT BEFORE publishing it, after its
+        // dependencies have already been published to crates.io.
 
         // Publish packages tier by tier
         for (tier_index, tier) in publish_order.tiers.iter().enumerate() {
@@ -373,7 +375,7 @@ impl Publisher {
     fn create_publish_config(&self) -> PublishConfig {
         PublishConfig {
             registry: self.config.registry.clone(),
-            dry_run_first: false, // Already handled at orchestrator level
+            dry_run_first: self.config.dry_run_first, // Validate each package right before publishing
             allow_dirty: self.config.allow_dirty,
             additional_args: self.config.additional_cargo_args.clone(),
             token: None, // Use cargo login

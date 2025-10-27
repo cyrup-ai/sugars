@@ -46,8 +46,13 @@ impl DependencyGraph {
         let mut node_map = HashMap::with_capacity(workspace.packages.len());
         let mut index_map = HashMap::with_capacity(workspace.packages.len());
 
-        // Add all packages as nodes first
-        for package_name in workspace.packages.keys() {
+        // Add all PUBLISHABLE packages as nodes first (skip publish = false)
+        for (package_name, package_info) in &workspace.packages {
+            // Skip packages with publish = false
+            if let Some(toml::Value::Boolean(false)) = package_info.config.other.get("publish") {
+                continue;
+            }
+            
             let node_index = graph.add_node(package_name.clone());
             node_map.insert(package_name.clone(), node_index);
             index_map.insert(node_index, package_name.clone());
@@ -55,16 +60,18 @@ impl DependencyGraph {
 
         // Add dependency edges (from dependency to dependent)
         for (package_name, dependencies) in &workspace.internal_dependencies {
-            let dependent_index = node_map.get(package_name)
-                .ok_or_else(|| WorkspaceError::PackageNotFound {
-                    name: package_name.clone(),
-                })?;
+            // Skip if the dependent package is not in the graph (publish = false)
+            let dependent_index = match node_map.get(package_name) {
+                Some(idx) => idx,
+                None => continue, // Skip non-publishable dependents
+            };
 
             for dependency_name in dependencies {
-                let dependency_index = node_map.get(dependency_name)
-                    .ok_or_else(|| WorkspaceError::PackageNotFound {
-                        name: dependency_name.clone(),
-                    })?;
+                // Skip if the dependency is not in the graph (publish = false)
+                let dependency_index = match node_map.get(dependency_name) {
+                    Some(idx) => idx,
+                    None => continue, // Skip non-publishable dependencies
+                };
 
                 // Edge from dependency to dependent (dependency must be published first)
                 graph.add_edge(*dependency_index, *dependent_index, ());
