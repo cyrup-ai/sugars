@@ -70,8 +70,6 @@ pub mod r#async {
 
 pub use sugars_macros as macros;
 
-pub use sugars_gix as external;
-
 pub use sugars_builders as builders;
 
 // Re-export commonly used types from collections
