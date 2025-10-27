@@ -5,9 +5,8 @@
 
 use crate::error::{Result, GitError, PublishError};
 use crate::workspace::WorkspaceInfo;
-use gix::bstr::ByteSlice;
-use gix::Repository;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::Command as AsyncCommand;
 
@@ -15,7 +14,7 @@ use tokio::process::Command as AsyncCommand;
 #[derive(Debug)]
 pub struct WorkspaceValidator {
     workspace: WorkspaceInfo,
-    repository: Repository,
+    repo_path: PathBuf,
 }
 
 /// Validation result with detailed pass/fail information
@@ -49,12 +48,11 @@ pub struct ValidationCheck {
 impl WorkspaceValidator {
     /// Create a new workspace validator
     pub fn new(workspace: WorkspaceInfo) -> Result<Self> {
-        let repository = gix::discover(&workspace.root)
-            .map_err(|_| GitError::NotRepository)?;
+        let repo_path = workspace.root.clone();
 
         Ok(Self {
             workspace,
-            repository,
+            repo_path,
         })
     }
 
@@ -172,30 +170,53 @@ impl WorkspaceValidator {
     /// Check if working directory is clean
     async fn check_working_directory_clean(&self) -> Result<bool> {
         // Use is_dirty() - the correct gix 0.73.0 API for status checking
-        // This checks for both staged and unstaged changes (but not untracked files)
-        let is_dirty = self.repository.is_dirty()
-            .map_err(|e| GitError::RemoteOperationFailed {
-                operation: "status check".to_string(),
+        // Use git CLI to check status
+        let output = AsyncCommand::new("git")
+            .args(&["status", "--porcelain"])
+            .current_dir(&self.repo_path)
+            .output()
+            .await
+            .map_err(|e| GitError::OperationFailed {
+                operation: "git status".to_string(),
                 reason: e.to_string(),
             })?;
         
-        // Return true if clean (not dirty)
-        Ok(!is_dirty)
+        if !output.status.success() {
+            return Err(GitError::OperationFailed {
+                operation: "git status".to_string(),
+                reason: String::from_utf8_lossy(&output.stderr).to_string(),
+            }.into());
+        }
+        
+        // Return true if clean (empty output)
+        Ok(output.stdout.is_empty())
     }
 
     /// Check if we're on a valid branch
     async fn check_valid_branch(&self) -> Result<String> {
-        let head = self.repository.head()
-            .map_err(|e| GitError::BranchOperationFailed {
+        let output = AsyncCommand::new("git")
+            .args(&["branch", "--show-current"])
+            .current_dir(&self.repo_path)
+            .output()
+            .await
+            .map_err(|e| GitError::OperationFailed {
+                operation: "git branch".to_string(),
                 reason: e.to_string(),
             })?;
-
-        let branch_name = head.referent_name()
-            .and_then(|name| name.shorten().to_str().ok())
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "detached HEAD".to_string());
-
-        Ok(branch_name)
+        
+        if !output.status.success() {
+            return Err(GitError::OperationFailed {
+                operation: "git branch".to_string(),
+                reason: String::from_utf8_lossy(&output.stderr).to_string(),
+            }.into());
+        }
+        
+        let branch_name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if branch_name.is_empty() {
+            Ok("detached HEAD".to_string())
+        } else {
+            Ok(branch_name)
+        }
     }
 
     /// Validate version consistency across packages

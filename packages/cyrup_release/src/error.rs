@@ -156,6 +156,13 @@ pub enum GitError {
     #[error("Not a git repository. Please initialize git first.")]
     NotRepository,
 
+    /// Generic git operation failed
+    #[error("Git operation '{operation}' failed: {reason}")]
+    OperationFailed {
+        operation: String,
+        reason: String,
+    },
+
     /// Working directory not clean
     #[error("Working directory not clean. Please commit or stash changes before releasing.")]
     DirtyWorkingDirectory,
