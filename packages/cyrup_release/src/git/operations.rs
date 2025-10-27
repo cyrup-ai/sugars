@@ -267,45 +267,76 @@ impl GitRepository {
 #[async_trait::async_trait]
 impl GitOperations for GitRepository {
     async fn create_release_commit(&self, version: &Version, message: Option<String>) -> Result<CommitInfo> {
-        // Use proven kodegen implementation (now sugars_gix)
-        let repo_handle = sugars_gix::RepoHandle::new(self.gix_repository().clone());
+        use tokio::process::Command;
+        
         let commit_message = message.unwrap_or_else(|| format!("release: v{}", version));
+        let repo_path = &self.repo_path;
         
-        let opts = sugars_gix::CommitOpts::message(commit_message)
-            .all(true);  // Stage all changes
-        
-        let commit_id = sugars_gix::commit(repo_handle.clone(), opts).await
+        // Stage all changes
+        let add_output = Command::new("git")
+            .args(&["add", "-A"])
+            .current_dir(repo_path)
+            .output()
+            .await
             .map_err(|e| GitError::CommitFailed {
-                reason: format!("kodegen commit failed: {}", e),
+                reason: format!("Failed to run git add: {}", e),
             })?;
         
-        // Convert to our CommitInfo type
-        let repo = self.gix_repository();
-        let commit = repo.find_commit(commit_id)
+        if !add_output.status.success() {
+            return Err(GitError::CommitFailed {
+                reason: format!("git add failed: {}", String::from_utf8_lossy(&add_output.stderr)),
+            }.into());
+        }
+        
+        // Create commit
+        let commit_output = Command::new("git")
+            .args(&["commit", "-m", &commit_message])
+            .current_dir(repo_path)
+            .output()
+            .await
             .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to find created commit: {}", e),
+                reason: format!("Failed to run git commit: {}", e),
             })?;
         
-        let author = commit.author().map_err(|e| GitError::CommitFailed {
-            reason: format!("Failed to get author: {}", e),
-        })?;
-        let message_obj = commit.message().map_err(|e| GitError::CommitFailed {
-            reason: format!("Failed to get message: {}", e),
-        })?;
-        let summary = message_obj.summary().to_string();
+        if !commit_output.status.success() {
+            return Err(GitError::CommitFailed {
+                reason: format!("git commit failed: {}", String::from_utf8_lossy(&commit_output.stderr)),
+            }.into());
+        }
         
-        let parent_ids: Vec<String> = commit.parent_ids()
-            .map(|id| id.to_string())
-            .collect();
+        // Get commit info
+        let log_output = Command::new("git")
+            .args(&["log", "-1", "--format=%H%n%h%n%s%n%an%n%ae"])
+            .current_dir(repo_path)
+            .output()
+            .await
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to run git log: {}", e),
+            })?;
+        
+        if !log_output.status.success() {
+            return Err(GitError::CommitFailed {
+                reason: format!("git log failed: {}", String::from_utf8_lossy(&log_output.stderr)),
+            }.into());
+        }
+        
+        let output = String::from_utf8_lossy(&log_output.stdout);
+        let lines: Vec<&str> = output.lines().collect();
+        
+        if lines.len() < 5 {
+            return Err(GitError::CommitFailed {
+                reason: "Unexpected git log output format".to_string(),
+            }.into());
+        }
         
         Ok(CommitInfo {
-            hash: commit_id.to_string(),
-            short_hash: commit_id.to_string()[..7].to_string(),
-            message: summary,
-            author_name: author.name.to_string(),
-            author_email: author.email.to_string(),
+            hash: lines[0].to_string(),
+            short_hash: lines[1].to_string(),
+            message: lines[2].to_string(),
+            author_name: lines[3].to_string(),
+            author_email: lines[4].to_string(),
             timestamp: chrono::Utc::now(),
-            parents: parent_ids,
+            parents: Vec::new(), // Not needed for our use case
         })
     }
     

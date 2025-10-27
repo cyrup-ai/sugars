@@ -21,11 +21,7 @@ name = "cyrup_release"
 path = "src/lib.rs"
 
 [dependencies]
-# Git operations using proven kodegen implementation (now in-workspace as packages/gix)
-sugars_gix = { path = "../gix" }
-
-# Git operations using pure Rust (no CLI)  
-gix = "0.74.0"
+# Git operations now use CLI commands via tokio::process
 
 # Format-preserving TOML editing
 toml_edit = "0.23.3"

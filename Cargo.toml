@@ -10,7 +10,6 @@ members = [
     "packages/collections",
     "packages/cyrup-sugars", 
     "packages/cyrup_release",
-    "packages/gix",
     "packages/llm",
     "packages/macros",
     "workspace-hack",
