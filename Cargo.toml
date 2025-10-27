@@ -1,4 +1,4 @@
-[workspace]
+[workspace] 
 members = [
     "examples/async_task_example",
     "examples/array_tuple_syntax",
