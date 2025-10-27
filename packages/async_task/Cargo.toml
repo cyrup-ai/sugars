@@ -1,7 +1,16 @@
 [package]
 name = "sugars_async_task"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+description = "Async task utilities and abstractions for the cyrup-sugars ecosystem"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/sugars_async_task"
+keywords = ["rust", "utilities", "async", "task", "cyrup"]
+categories = ["asynchronous", "development-tools"]
+readme = "../../README.md"
 
 [lib]
 path = "src/lib.rs"
@@ -10,7 +19,8 @@ path = "src/lib.rs"
 tokio = { version = "1.46.1", features = ["rt", "sync"], optional = true }
 futures = "0.3.31"
 parking_lot = { version = "0.12.4", optional = true }
-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+sugars_collections = { version = "0.5.3", path = "../collections" }
+# workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 
 [features]
 default = ["tokio"]

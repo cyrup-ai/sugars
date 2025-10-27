@@ -4,11 +4,103 @@
 //! with full support for ergonomic JSON syntax and advanced agent configuration.
 
 use cyrup_sugars::AsyncStream;
+use cyrup_sugars::prelude::*;
 use serde_json::Value;
 use std::collections::HashMap;
 
+/// Trait for converting various types to HashMaps for JSON-like syntax support
+pub trait IntoHashMap {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str>;
+}
+
+/// Trait for converting pattern matching closures to proper Result handlers
+pub trait IntoChunkHandler {
+    fn into_chunk_handler(
+        self,
+    ) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>;
+}
+
+/// Implement IntoHashMap for closures (existing functionality)
+impl<F> IntoHashMap for F
+where
+    F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
+{
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self()
+    }
+}
+
+/// Implement IntoHashMap for direct HashMap (zero-copy for pre-built maps)
+impl IntoHashMap for hashbrown::HashMap<&'static str, &'static str> {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self
+    }
+}
+
+/// Implement IntoHashMap for array of tuples (compile-time JSON-like syntax)
+impl<const N: usize> IntoHashMap for [(&'static str, &'static str); N] {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self.into_iter().collect()
+    }
+}
+
+/// Implement IntoHashMap for Vec of tuples (runtime JSON-like syntax)
+impl IntoHashMap for Vec<(&'static str, &'static str)> {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self.into_iter().collect()
+    }
+}
+
+/// Implement IntoChunkHandler for regular closures
+impl<F> IntoChunkHandler for F
+where
+    F: Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static,
+{
+    fn into_chunk_handler(
+        self,
+    ) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>
+    {
+        Box::new(self)
+    }
+}
+
+// Re-export the hash_map macro for internal use
+pub use sugars_collections::hash_map;
+
+/// Wrapper type for JSON syntax closures
+pub struct JsonClosure<F>(F);
+
+impl<F> JsonClosure<F> {
+    pub fn new(f: F) -> Self {
+        JsonClosure(f)
+    }
+}
+
+impl<F> From<JsonClosure<F>> for hashbrown::HashMap<&'static str, &'static str>
+where
+    F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
+{
+    fn from(val: JsonClosure<F>) -> Self {
+        (val.0)()
+    }
+}
+
 /// Production-quality FluentAI agent builder with comprehensive configuration support
 pub struct FluentAi;
+
+/// Macro that transforms JSON object syntax into HashMap
+#[macro_export]
+macro_rules! json_object {
+    ({ $($key:expr => $value:expr),* $(,)? }) => {
+        {
+            let mut map = ::hashbrown::HashMap::new();
+            $(
+                map.insert($key, $value);
+            )*
+            map
+        }
+    };
+}
 
 /// Context types
 pub struct Context<T>(std::marker::PhantomData<T>);
@@ -31,11 +123,15 @@ impl<T> Context<T> {
 pub struct Tool<T>(std::marker::PhantomData<T>);
 pub struct Perplexity;
 pub struct NamedTool {
+    #[allow(dead_code)]
     name: String,
 }
 
 impl<T> Tool<T> {
-    pub fn new(_params: impl std::any::Any) -> Tool<T> {
+    pub fn new<P>(_params: P) -> Tool<T>
+    where
+        P: IntoHashMap,
+    {
         // Store params in a real implementation
         Tool(std::marker::PhantomData)
     }
@@ -52,8 +148,11 @@ impl Tool<()> {
 }
 
 pub struct NamedToolBuilder {
+    #[allow(dead_code)]
     name: String,
+    #[allow(dead_code)]
     bin_path: Option<String>,
+    #[allow(dead_code)]
     description: Option<String>,
 }
 
@@ -74,6 +173,7 @@ pub struct Stdio;
 
 /// Library type for memory
 pub struct Library {
+    #[allow(dead_code)]
     name: String,
 }
 
@@ -87,16 +187,30 @@ impl Library {
 
 /// Agent role builder with all the required methods
 pub struct AgentRoleBuilder {
+    #[allow(dead_code)]
     name: String,
+    #[allow(dead_code)]
     provider: Option<String>,
+    #[allow(dead_code)]
     temperature: Option<f64>,
+    #[allow(dead_code)]
     max_tokens: Option<u64>,
+    #[allow(dead_code)]
     system_prompt: Option<String>,
+    #[allow(dead_code)]
     contexts: Vec<Box<dyn std::any::Any>>,
+    #[allow(dead_code)]
     tools: Vec<Box<dyn std::any::Any>>,
+    #[allow(dead_code)]
     additional_params: Option<HashMap<String, Value>>,
+    #[allow(dead_code)]
     metadata: Option<HashMap<String, Value>>,
+    #[allow(dead_code)]
     memory: Option<Library>,
+    #[allow(dead_code, clippy::type_complexity)]
+    chunk_handler: Option<
+        Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>,
+    >,
 }
 
 /// Message role enum
@@ -107,14 +221,29 @@ pub enum MessageRole {
     Assistant,
 }
 
-/// Message chunk for real-time streaming communication
+/// Conversation chunk for real-time streaming communication
 #[derive(Debug, Clone)]
-pub struct MessageChunk {
-    content: String,
-    role: MessageRole,
+pub struct ConversationChunk {
+    pub content: String,
+    pub role: MessageRole,
+    error: Option<String>,
 }
 
-impl std::fmt::Display for MessageChunk {
+impl MessageChunk for ConversationChunk {
+    fn bad_chunk(error: String) -> Self {
+        ConversationChunk {
+            content: format!("Error: {}", error),
+            role: MessageRole::System,
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
+
+impl std::fmt::Display for ConversationChunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}: {}", self.role, self.content)
     }
@@ -122,7 +251,9 @@ impl std::fmt::Display for MessageChunk {
 
 /// Intelligent conversational agent with advanced capabilities
 pub struct Agent {
+    #[allow(dead_code)]
     builder: AgentRoleBuilder,
+    #[allow(dead_code)]
     history: Vec<(MessageRole, String)>,
 }
 
@@ -147,6 +278,7 @@ impl FluentAi {
             additional_params: None,
             metadata: None,
             memory: None,
+            chunk_handler: None,
         }
     }
 }
@@ -198,13 +330,13 @@ impl AgentRoleBuilder {
     }
 
     /// Set additional parameters with JSON object syntax
-    pub fn additional_params<F>(mut self, params: F) -> Self
+    pub fn additional_params<T>(mut self, params: T) -> Self
     where
-        F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
+        T: IntoHashMap,
     {
-        let hb_map = params();
+        let config_map = params.into_hashmap();
         let mut map = HashMap::new();
-        for (k, v) in hb_map {
+        for (k, v) in config_map {
             map.insert(k.to_string(), Value::String(v.to_string()));
         }
         self.additional_params = Some(map);
@@ -218,13 +350,13 @@ impl AgentRoleBuilder {
     }
 
     /// Set metadata with JSON object syntax  
-    pub fn metadata<F>(mut self, metadata: F) -> Self
+    pub fn metadata<T>(mut self, metadata: T) -> Self
     where
-        F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
+        T: IntoHashMap,
     {
-        let hb_map = metadata();
+        let config_map = metadata.into_hashmap();
         let mut map = HashMap::new();
-        for (k, v) in hb_map {
+        for (k, v) in config_map {
             map.insert(k.to_string(), Value::String(v.to_string()));
         }
         self.metadata = Some(map);
@@ -247,15 +379,23 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Handle chunks - must precede .chat()
-    pub fn on_chunk<F>(self, _handler: F) -> AgentRoleBuilderWithChunkHandler<F>
-    where
-        F: Fn(Result<MessageChunk, String>) -> Result<MessageChunk, String> + Send + Sync + 'static,
-    {
-        AgentRoleBuilderWithChunkHandler {
-            inner: self,
-            chunk_handler: _handler,
+    /// Convert to agent - EXACT syntax: .into_agent()
+    pub fn into_agent(self) -> Agent {
+        Agent {
+            builder: self,
+            history: Vec::new(),
         }
+    }
+}
+
+/// Implement ChunkHandler for AgentRoleBuilder
+impl ChunkHandler<ConversationChunk, String> for AgentRoleBuilder {
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static,
+    {
+        self.chunk_handler = Some(Box::new(handler));
+        self
     }
 }
 
@@ -275,24 +415,6 @@ impl<T> McpServerBuilder<T> {
     }
 }
 
-/// Builder with chunk handler
-pub struct AgentRoleBuilderWithChunkHandler<F> {
-    inner: AgentRoleBuilder,
-    chunk_handler: F,
-}
-
-impl<F> AgentRoleBuilderWithChunkHandler<F>
-where
-    F: Fn(Result<MessageChunk, String>) -> Result<MessageChunk, String> + Send + Sync + 'static,
-{
-    pub fn into_agent(self) -> Agent {
-        Agent {
-            builder: self.inner,
-            history: Vec::new(),
-        }
-    }
-}
-
 impl Agent {
     /// Set conversation history
     pub fn conversation_history(mut self, role: MessageRole, message: &str) -> Self {
@@ -304,14 +426,15 @@ impl Agent {
     pub fn chat(
         self,
         message: impl Into<String>,
-    ) -> Result<AsyncStream<MessageChunk>, Box<dyn std::error::Error>> {
+    ) -> Result<AsyncStream<ConversationChunk>, Box<dyn std::error::Error>> {
         let message = message.into();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Send a simple response
-        let chunk = MessageChunk {
+        let chunk = ConversationChunk {
             content: format!("Echo: {}", message),
             role: MessageRole::Assistant,
+            error: None,
         };
         let _ = tx.send(chunk);
 

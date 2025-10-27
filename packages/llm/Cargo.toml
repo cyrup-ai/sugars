@@ -1,24 +1,29 @@
 [package]
 name = "sugars_llm"
-version = "0.1.0"
-edition = "2021"
-description = "LLM builders and domain objects for cyrup_sugars"
-license = "MIT OR Apache-2.0"
-authors = ["Cyrup AI <info@cyrup.ai>"]
-repository = "https://github.com/cyrup-ai/sugars"
+version.workspace = true
+edition.workspace = true
+description = "LLM integration and AI agent builder utilities"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 documentation = "https://docs.rs/sugars_llm"
-keywords = ["llm", "ai", "builder", "async"]
+keywords = ["rust", "llm", "ai", "builder", "cyrup"]
 categories = ["development-tools", "asynchronous"]
+readme = "../../README.md"
 
 [dependencies]
 # Core async primitives from workspace
-cyrup_sugars = { path = "../cyrup-sugars", features = ["tokio-async", "hashbrown-json"] }
+cyrup_sugars = { version = "0.5.3", path = "../cyrup-sugars", features = ["tokio-async", "array-tuples"] }
 
-# Macros for JSON object syntax
-sugars_macros = { path = "../macros" }
+# Macros for array tuple syntax
+sugars_macros = { version = "0.5.3", path = "../macros" }
+
+# Collections for array tuple syntax support
+sugars_collections = { version = "0.5.3", path = "../collections" }
 
 # Async runtime and utilities
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 
 # Serialization
@@ -26,13 +31,13 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Collections and data structures
-hashbrown = "0.15.4"
+hashbrown = "0.15"
 
 # HTTP client for API calls
-reqwest = { version = "0.11", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 
 # Error handling
-thiserror = "1.0"
+thiserror = "2"
 anyhow = "1.0"
 
 # Logging
@@ -42,24 +47,24 @@ log = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 
 # UUID generation
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
 
 # For file handling in context
-walkdir = "2.3"
+walkdir = "2"
 
 # For embeddings and vector operations
-ndarray = "0.15"
+ndarray = "0.16"
 
 # For file globbing patterns
 glob = "0.3"
 
 [features]
-default = ["tokio-async", "hashbrown-json"]
+default = ["tokio-async", "array-tuples"]
 tokio-async = ["cyrup_sugars/tokio-async"]
 std-async = ["cyrup_sugars/std-async"]
 crossbeam-async = ["cyrup_sugars/crossbeam-async"]
-hashbrown-json = ["cyrup_sugars/hashbrown-json"]
-full = ["tokio-async", "hashbrown-json"]
+array-tuples = ["cyrup_sugars/array-tuples"]
+full = ["tokio-async", "array-tuples"]
 
 [dev-dependencies]
 tokio-test = "0.4"

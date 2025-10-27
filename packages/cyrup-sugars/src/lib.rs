@@ -9,7 +9,7 @@
 //! - `collections` - Enhanced collection types like `ZeroOneOrMany`, `OneOrMany`, and `ByteSize`
 //! - `async` - Async utilities with the "always unwrapped" pattern using `AsyncTask` and `AsyncStream`
 //! - `macros` - Convenient macros for collections and async operations
-//! - `hashbrown-json` - 🔥 Amazing hashbrown HashMap macros with full JSON object support
+//! - `array-tuples` - 🔥 Amazing hashbrown HashMap macros with array tuple syntax support
 //! - `gix-interop` - Git object ID optimized hash tables
 //!
 //! ## Example
@@ -27,7 +27,7 @@
 //! // let bad_task = AsyncTask::from_value(Ok(42)); // Compile error!
 //! ```
 //!
-//! ### 🔥 Hashbrown JSON Syntax (with `hashbrown-json` feature)
+//! ### 🔥 Hashbrown Array Tuple Syntax (with `array-tuples` feature)
 //!
 //! ```ignore
 //! use cyrup_sugars::collections::{ZeroOneOrMany, OneOrMany};
@@ -52,6 +52,9 @@
 #![warn(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+/// Closure macros for elegant stream processing with zero-allocation pattern matching
+pub mod closures;
+
 // Re-export modules from workspace packages
 pub use sugars_collections as collections;
 
@@ -74,16 +77,45 @@ pub use sugars_builders as builders;
 // Re-export commonly used types from collections
 pub use sugars_collections::{ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany};
 
-// Re-export JSON extension traits when both features are enabled
-#[cfg(feature = "hashbrown-json")]
+// Re-export array tuple extension traits when both features are enabled
+#[cfg(feature = "array-tuples")]
 pub use sugars_collections::{
-    CollectionJsonExtKString, CollectionJsonExtKV, CollectionJsonExtStringString,
-    CollectionJsonExtStringV, JsonObjectExtKString, JsonObjectExtKV, JsonObjectExtStringString,
-    JsonObjectExtStringV, TryCollectionJsonExtKString, TryCollectionJsonExtKV,
-    TryCollectionJsonExtStringString, TryCollectionJsonExtStringV,
+    ArrayTupleObjectExtKString, ArrayTupleObjectExtKV, ArrayTupleObjectExtStringString,
+    ArrayTupleObjectExtStringV, CollectionArrayTupleExtKString, CollectionArrayTupleExtKV,
+    CollectionArrayTupleExtStringString, CollectionArrayTupleExtStringV,
+    TryCollectionArrayTupleExtKString, TryCollectionArrayTupleExtKV,
+    TryCollectionArrayTupleExtStringString, TryCollectionArrayTupleExtStringV,
 };
 
 // Re-export async utilities
 pub use r#async::{
     AsyncResult, AsyncResultChunk, AsyncStream, AsyncTask, FutureExt, NotResult, StreamExt,
 };
+
+// Re-export JSON syntax macros for array-tuples feature
+#[cfg(feature = "array-tuples")]
+pub use sugars_collections::hash_map;
+#[cfg(feature = "array-tuples")]
+pub use sugars_macros::hash_map_fn;
+
+/// Prelude module that brings common macros and types into scope
+pub mod prelude {
+
+    // Re-export commonly used types
+    pub use crate::{
+        AsyncResult, AsyncStream, AsyncTask, ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany,
+    };
+
+    // Re-export JSON syntax macros when array-tuples feature is enabled
+    #[cfg(feature = "array-tuples")]
+    pub use crate::{hash_map, hash_map_fn};
+
+    // Re-export async utilities
+    pub use crate::r#async::{FutureExt, NotResult, StreamExt};
+
+    // Re-export builder utilities
+    pub use crate::builders::{ChunkHandler, MessageChunk};
+
+    // Re-export macros for elegant stream processing (from local closures module)
+    pub use crate::on_result;
+}

@@ -1,13 +1,28 @@
 [workspace]
 members = [
-    "packages/cyrup-sugars",
+    "examples/async_task_example",
+    "examples/array_tuple_syntax",
+    "examples/one_or_many_example",
+    "examples/zero_one_or_many_example",
     "packages/async_stream",
     "packages/async_task",
-    "packages/collections",
-    "packages/macros",
-    "packages/gix",
     "packages/builders",
-    "packages/sugars-examples",
-    "workspace-hack"
-, "packages/llm"]
+    "packages/collections",
+    "packages/cyrup-sugars", 
+    "packages/cyrup_release",
+    "packages/gix",
+    "packages/llm",
+    "packages/macros",
+    "workspace-hack",
+]
 resolver = "2"
+
+[workspace.package]
+version = "0.5.3"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["David Maple <david@cyrup.ai>"]
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
+keywords = ["rust", "utilities", "collections", "async", "cyrup"]
+categories = ["development-tools"]

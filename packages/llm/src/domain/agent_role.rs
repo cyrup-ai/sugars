@@ -7,6 +7,43 @@ use crate::domain::chunk::ChatMessageChunk;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
+/// Trait for converting various types to HashMaps for JSON-like syntax support
+pub trait IntoHashMap {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str>;
+}
+
+/// Implement IntoHashMap for closures (existing functionality)
+impl<F> IntoHashMap for F 
+where
+    F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>
+{
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self()
+    }
+}
+
+/// Implement IntoHashMap for direct HashMap (zero-copy for pre-built maps)
+impl IntoHashMap for hashbrown::HashMap<&'static str, &'static str> {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self
+    }
+}
+
+/// Implement IntoHashMap for array of tuples (compile-time JSON-like syntax)
+impl<const N: usize> IntoHashMap for [(&'static str, &'static str); N] {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self.into_iter().collect()
+    }
+}
+
+/// Implement IntoHashMap for Vec of tuples (runtime JSON-like syntax)
+impl IntoHashMap for Vec<(&'static str, &'static str)> {
+    fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
+        self.into_iter().collect()
+    }
+}
+
+
 /// Builder for creating agent roles - EXACT API from ARCHITECTURE.md
 pub struct AgentRoleBuilder {
     name: String,
@@ -73,6 +110,7 @@ impl AgentConversationMessage {
     }
 }
 
+
 impl AgentRoleBuilder {
     /// Create a new agent role builder
     pub fn new(name: impl Into<String>) -> Self {
@@ -138,12 +176,17 @@ impl AgentRoleBuilder {
         self
     }
     
-    /// Set additional params - EXACT syntax: .additional_params({"beta" => "true"})
-    pub fn additional_params<F>(mut self, params: F) -> Self 
+    /// Set additional parameters - EXACT syntax: .additional_params({"beta" => "true"})
+    pub fn additional_params<T>(mut self, params: T) -> Self
     where
-        F: FnOnce() -> HashMap<String, Value>
+        T: IntoHashMap
     {
-        self.additional_params = Some(params());
+        let config_map = params.into_hashmap();
+        let mut map = HashMap::new();
+        for (k, v) in config_map {
+            map.insert(k.to_string(), Value::String(v.to_string()));
+        }
+        self.additional_params = Some(map);
         self
     }
     
@@ -154,13 +197,19 @@ impl AgentRoleBuilder {
     }
     
     /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
-    pub fn metadata<F>(mut self, metadata: F) -> Self 
+    pub fn metadata<T>(mut self, meta: T) -> Self
     where
-        F: FnOnce() -> HashMap<String, Value>
+        T: IntoHashMap
     {
-        self.metadata = Some(metadata());
+        let config_map = meta.into_hashmap();
+        let mut map = HashMap::new();
+        for (k, v) in config_map {
+            map.insert(k.to_string(), Value::String(v.to_string()));
+        }
+        self.metadata = Some(map);
         self
     }
+    
     
     /// Set on_tool_result handler - EXACT syntax: .on_tool_result(|results| { ... })
     pub fn on_tool_result<F>(mut self, handler: F) -> Self
@@ -344,7 +393,15 @@ where
                 list.push(Box::new(self.0));
                 list.push(Box::new(self.1));
             }
-            None => *contexts = Some(ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1)]).unwrap()),
+            None => {
+                match ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1)]) {
+                    Ok(ctx) => *contexts = Some(ctx),
+                    Err(_) => {
+                        log::error!("Failed to create context list for 2-tuple");
+                        *contexts = Some(ZeroOneOrMany::none());
+                    }
+                }
+            }
         }
     }
 }
@@ -362,7 +419,15 @@ where
                 list.push(Box::new(self.1));
                 list.push(Box::new(self.2));
             }
-            None => *contexts = Some(ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2)]).unwrap()),
+            None => {
+                match ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2)]) {
+                    Ok(ctx) => *contexts = Some(ctx),
+                    Err(_) => {
+                        log::error!("Failed to create context list for 3-tuple");
+                        *contexts = Some(ZeroOneOrMany::none());
+                    }
+                }
+            }
         }
     }
 }
@@ -382,7 +447,15 @@ where
                 list.push(Box::new(self.2));
                 list.push(Box::new(self.3));
             }
-            None => *contexts = Some(ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2), Box::new(self.3)]).unwrap()),
+            None => {
+                match ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2), Box::new(self.3)]) {
+                    Ok(ctx) => *contexts = Some(ctx),
+                    Err(_) => {
+                        log::error!("Failed to create context list for 4-tuple");
+                        *contexts = Some(ZeroOneOrMany::none());
+                    }
+                }
+            }
         }
     }
 }

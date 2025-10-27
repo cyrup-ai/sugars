@@ -313,7 +313,7 @@ impl<T: Transport> McpToolBuilder<T> {
         let client = tool.client.clone();
         let name = tool.definition.name.clone();
         
-        AsyncTask::from_future(async move {
+        AsyncTask::new(async move {
             match client.call_tool(&name, args).await {
                 Ok(result) => result,
                 Err(McpError::ToolNotFound) => Value::String(format!("Tool '{}' not found", name)),

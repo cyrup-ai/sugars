@@ -14,15 +14,6 @@ macro_rules! on_result {
     };
 }
 
-/// Creates a closure that processes stream chunks with the provided expression.
-/// Available when both 'macros' and any async feature are enabled.
-#[macro_export]
-macro_rules! on_chunk {
-    ($expr:expr) => {
-        move |__chunk| $expr
-    };
-}
-
 /// Creates a closure that handles errors with the provided expression.
 /// Available when both 'macros' and any async feature are enabled.
 #[macro_export]

@@ -1,19 +1,29 @@
 [package]
 name = "sugars_async_stream"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+description = "Async stream utilities and abstractions for the cyrup-sugars ecosystem"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/sugars_async_stream"
+keywords = ["rust", "utilities", "async", "stream", "cyrup"]
+categories = ["asynchronous", "development-tools"]
+readme = "../../README.md"
 
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
-sugars_async_task = { path = "../async_task" }
-tokio = { version = "1.46.1", features = ["rt", "sync", "macros"], optional = true }
+sugars_async_task = { version = "0.5.3", path = "../async_task" }
+sugars_collections = { version = "0.5.3", path = "../collections" }
+tokio = { version = "1.47", features = ["rt", "sync", "macros"], optional = true }
 futures = "0.3.31"
 parking_lot = { version = "0.12.4", optional = true }
 crossbeam = { version = "0.8.4", optional = true }
 async-channel = { version = "2.5.0", optional = true }
-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+# workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 
 [features]
 default = ["tokio-backend"]

@@ -6,13 +6,14 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use sugars_collections::ZeroOneOrMany;
 use tokio::sync::oneshot;
 
 /// Marker trait to prevent Result types in AsyncTask/AsyncStream
 ///
 /// This trait is automatically implemented for all types except Result types.
 /// It uses negative impls to explicitly exclude Result<T, E> from being used
-/// in AsyncTask<T> or AsyncStream<T>.
+/// in `AsyncTask<T>` or `AsyncStream<T>`.
 pub auto trait NotResult {}
 
 // Negative implementations - Result types do NOT implement NotResult
@@ -36,9 +37,29 @@ impl<T> AsyncTask<T>
 where
     T: NotResult, // T cannot be any Result type
 {
-    /// Create a new AsyncTask from a oneshot receiver
-    pub fn new(receiver: oneshot::Receiver<T>) -> Self {
-        Self { receiver }
+    /// Create a new AsyncTask from ZeroOneOrMany receivers
+    pub fn new(receivers: ZeroOneOrMany<oneshot::Receiver<T>>) -> Self
+    where
+        T: Send + 'static,
+    {
+        match receivers {
+            ZeroOneOrMany::None => {
+                let (tx, rx) = oneshot::channel();
+                drop(tx); // Closed channel
+                Self { receiver: rx }
+            }
+            ZeroOneOrMany::One(receiver) => Self { receiver },
+            ZeroOneOrMany::Many(receivers) => {
+                // Take the first receiver
+                if let Some(receiver) = receivers.into_iter().next() {
+                    Self { receiver }
+                } else {
+                    let (tx, rx) = oneshot::channel();
+                    drop(tx);
+                    Self { receiver: rx }
+                }
+            }
+        }
     }
 
     /// Create an AsyncTask from a future

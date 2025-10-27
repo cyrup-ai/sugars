@@ -1,7 +1,16 @@
 [package]
 name = "sugars_collections"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+description = "Efficient collection types including ZeroOneOrMany and OneOrMany with array tuple syntax support"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/sugars_collections"
+keywords.workspace = true
+categories = ["data-structures", "development-tools"]
+readme = "../../README.md"
 
 [lib]
 path = "src/lib.rs"
@@ -9,13 +18,13 @@ name = "sugars_collections"
 
 [dependencies]
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140" }
-hashbrown = { version = "0.15.4" }
-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+serde_json = { version = "1" }
+hashbrown = { version = "0.15" }
+# workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 
 [features]
 default = []
-hashbrown-json = []
+array-tuples = []
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

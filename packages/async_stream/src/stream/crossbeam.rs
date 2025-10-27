@@ -61,7 +61,7 @@ where
     where
         T: Send + 'static,
     {
-        super::AsyncTask::from_future(async move {
+        super::AsyncTask::new(async move {
             let mut items = Vec::new();
             let receiver = self.receiver;
 

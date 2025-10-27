@@ -3,6 +3,7 @@
 use serde_json::Value;
 use std::marker::PhantomData;
 use crate::HashMap;
+use crate::domain::agent_role::IntoHashMap;
 
 /// Marker type for Perplexity
 pub struct Perplexity;
@@ -15,13 +16,18 @@ pub struct Tool<T> {
 
 impl<T> Tool<T> {
     /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new({"citations" => "true"})
-    pub fn new<F>(config: F) -> Self 
+    pub fn new<C>(config: C) -> Self 
     where
-        F: FnOnce() -> HashMap<String, Value>
+        C: IntoHashMap
     {
+        let config_map = config.into_hashmap();
+        let mut map = HashMap::new();
+        for (k, v) in config_map {
+            map.insert(k.to_string(), Value::String(v.to_string()));
+        }
         Self {
             _phantom: PhantomData,
-            config: config(),
+            config: map,
         }
     }
 }

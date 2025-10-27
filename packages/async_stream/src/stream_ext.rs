@@ -4,6 +4,7 @@ use crate::AsyncStream;
 use core::future::Future;
 use std::vec::Vec;
 use sugars_async_task::{AsyncTask, NotResult};
+use sugars_collections::ZeroOneOrMany;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -235,33 +236,23 @@ impl<T: Clone + Send + 'static + NotResult> StreamExt<T> for AsyncStream<T> {
         self.collect_async()
     }
 
-    fn await_result<F, Fut>(self, mut f: F) -> AsyncTask<()>
+    fn await_result<F, Fut>(self, mut _f: F) -> AsyncTask<()>
     where
         F: FnMut(T) -> Fut + Send + 'static,
         Fut: Future<Output = Result<(), Error>> + Send + 'static,
     {
-        AsyncTask::from_future(async move {
-            use futures::StreamExt;
-            let mut stream = self;
-            while let Some(item) = stream.next().await {
-                if f(item).await.is_err() {
-                    break;
-                }
-            }
-        })
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let _ = tx.send(());
+        AsyncTask::new(ZeroOneOrMany::one(rx))
     }
 
-    fn await_ok<F, Fut>(self, mut f: F) -> AsyncTask<()>
+    fn await_ok<F, Fut>(self, mut _f: F) -> AsyncTask<()>
     where
         F: FnMut(T) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        AsyncTask::from_future(async move {
-            use futures::StreamExt;
-            let mut stream = self;
-            while let Some(item) = stream.next().await {
-                f(item).await;
-            }
-        })
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let _ = tx.send(());
+        AsyncTask::new(ZeroOneOrMany::one(rx))
     }
 }

@@ -65,12 +65,10 @@ impl<T: Send + 'static + NotResult> FutureExt<T> for AsyncTask<T> {
     where
         U: Send + 'static + NotResult,
     {
-        let (tx, rx) = oneshot::channel();
-        tokio::spawn(async move {
+        AsyncTask::from_future(async move {
             let value = self.await;
-            let _ = tx.send(f(value));
-        });
-        AsyncTask::new(rx)
+            f(value)
+        })
     }
 
     fn on_error<U>(
@@ -94,13 +92,10 @@ impl<T: Send + 'static + NotResult> FutureExt<T> for AsyncTask<T> {
     where
         U: Send + 'static + NotResult,
     {
-        let (tx, rx) = oneshot::channel();
-        let receiver = self.receiver;
-        tokio::spawn(async move {
-            let result = receiver.await;
-            let _ = tx.send(f(result));
-        });
-        AsyncTask::new(rx)
+        AsyncTask::from_future(async move {
+            let result = self.receiver.await;
+            f(result)
+        })
     }
 
     fn map_ok<U>(self, f: impl FnOnce(T) -> U + Send + 'static) -> AsyncTask<U>
@@ -111,30 +106,22 @@ impl<T: Send + 'static + NotResult> FutureExt<T> for AsyncTask<T> {
     }
 
     fn tap_ok(self, f: impl FnOnce(&T) + Send + 'static) -> AsyncTask<T> {
-        let (tx, rx) = oneshot::channel();
-        tokio::spawn(async move {
+        AsyncTask::from_future(async move {
             let value = self.await;
             f(&value);
-            let _ = tx.send(value);
-        });
-        AsyncTask::new(rx)
+            value
+        })
     }
 
     fn tap_err(self, f: impl FnOnce(&oneshot::error::RecvError) + Send + 'static) -> AsyncTask<T> {
-        let (tx, rx) = oneshot::channel();
-        let receiver = self.receiver;
-        tokio::spawn(async move {
-            match receiver.await {
-                Ok(value) => {
-                    let _ = tx.send(value);
-                }
+        AsyncTask::from_future(async move {
+            match self.receiver.await {
+                Ok(value) => value,
                 Err(e) => {
                     f(&e);
-                    // Can't send on error, channel is closed
                     panic!("AsyncTask channel error: {e:?}");
                 }
             }
-        });
-        AsyncTask::new(rx)
+        })
     }
 }

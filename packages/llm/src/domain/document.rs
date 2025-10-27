@@ -230,7 +230,7 @@ impl DocumentBuilderWithHandler {
                 let additional_props = self.additional_props;
                 let mut error_handler = self.error_handler;
                 
-                AsyncTask::from_future(async move {
+                AsyncTask::new(async move {
                     match tokio::fs::read_to_string(&path).await {
                         Ok(data) => Document {
                             data,
@@ -256,7 +256,7 @@ impl DocumentBuilderWithHandler {
                 let additional_props = self.additional_props;
                 let mut error_handler = self.error_handler;
                 
-                AsyncTask::from_future(async move {
+                AsyncTask::new(async move {
                     match reqwest::get(&url).await {
                         Ok(resp) => match resp.text().await {
                             Ok(data) => Document {
@@ -313,7 +313,7 @@ impl DocumentBuilderWithHandler {
                     owner, repo, file_path
                 );
                 
-                AsyncTask::from_future(async move {
+                AsyncTask::new(async move {
                     match reqwest::get(&api_url).await {
                         Ok(resp) => match resp.json::<serde_json::Value>().await {
                             Ok(json) => {

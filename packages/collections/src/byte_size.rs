@@ -1,11 +1,11 @@
 //! Byte size utilities for semantic sizing
 
-#[cfg(feature = "hashbrown-json")]
+#[cfg(feature = "array-tuples")]
 use serde::{Deserialize, Serialize};
 
 /// Represents a size in bytes with semantic constructors
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "hashbrown-json", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "array-tuples", derive(Serialize, Deserialize))]
 pub struct ByteSize(pub usize);
 
 impl ByteSize {
@@ -226,6 +226,7 @@ mod tests {
     #[test]
     fn test_clone_copy() {
         let original = ByteSize::kilobytes(5);
+        #[allow(clippy::clone_on_copy)]
         let cloned = original.clone();
         let copied = original;
 
@@ -241,7 +242,7 @@ mod tests {
         assert_eq!(debug_str, "ByteSize(1024)");
     }
 
-    #[cfg(feature = "hashbrown-json")]
+    #[cfg(feature = "array-tuples")]
     #[test]
     fn test_serde_serialization() {
         use serde_json;
@@ -252,7 +253,7 @@ mod tests {
         assert_eq!(size, deserialized);
     }
 
-    #[cfg(feature = "hashbrown-json")]
+    #[cfg(feature = "array-tuples")]
     #[test]
     fn test_serde_zero() {
         use serde_json;
@@ -263,7 +264,7 @@ mod tests {
         assert_eq!(size, deserialized);
     }
 
-    #[cfg(feature = "hashbrown-json")]
+    #[cfg(feature = "array-tuples")]
     #[test]
     fn test_serde_large() {
         use serde_json;

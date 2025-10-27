@@ -4,6 +4,7 @@ use futures::Stream;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use sugars_async_task::{AsyncTask, NotResult};
+use sugars_collections::ZeroOneOrMany;
 use tokio::sync::mpsc;
 
 /// Generic async stream wrapper for streaming operations with Tokio
@@ -32,26 +33,19 @@ where
         S: Stream<Item = T> + Send + 'static,
         T: Send + 'static,
     {
-        let (tx, rx) = mpsc::unbounded_channel();
+        let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
             use futures::StreamExt;
             let mut stream = std::pin::pin!(stream);
-            while let Some(item) = stream.next().await {
-                if tx.send(item).is_err() {
-                    break;
-                }
-            }
-        });
-
-        AsyncTask::from_future(async move {
             let mut items = Vec::new();
-            let mut receiver = rx;
-            while let Some(item) = receiver.recv().await {
+            while let Some(item) = stream.next().await {
                 items.push(item);
             }
-            items
-        })
+            let _ = tx.send(items);
+        });
+
+        AsyncTask::new(ZeroOneOrMany::one(rx))
     }
 
     /// Collect all items from the stream into a Vec
@@ -59,16 +53,18 @@ where
     where
         T: Send + 'static,
     {
-        AsyncTask::from_future(async move {
-            let mut items = Vec::new();
-            let mut receiver = self.receiver;
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let mut receiver = self.receiver;
 
+        tokio::spawn(async move {
+            let mut items = Vec::new();
             while let Some(item) = receiver.recv().await {
                 items.push(item);
             }
+            let _ = tx.send(items);
+        });
 
-            items
-        })
+        AsyncTask::new(ZeroOneOrMany::one(rx))
     }
 }
 
